@@ -1,6 +1,8 @@
 const { Listing } = require('../../models');
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
+const { uploadMedia } = require('../../middleware/uploadMiddleware');
+
 
 const listingController = {
 
@@ -69,9 +71,18 @@ const listingController = {
                 return res.status(400).json({ success: false, errors });
             }
 
-            amenities = Array.isArray(amenities)
-                ? amenities
-                : amenities ? JSON.parse(amenities) : [];
+            let parsedAmenities = [];
+            if (Array.isArray(amenities)) {
+                parsedAmenities = amenities;
+            } else if (typeof amenities === 'string') {
+                try {
+
+                    parsedAmenities = JSON.parse(amenities);
+                } catch {
+
+                    parsedAmenities = amenities.split(',').map(a => a.trim());
+                }
+            }
 
             const listing = await Listing.create({
                 ownerId,
@@ -87,7 +98,7 @@ const listingController = {
                 state,
                 country,
                 address,
-                amenities,
+                amenities: parsedAmenities,
                 images: imageUrls,
             });
 
@@ -234,6 +245,21 @@ const listingController = {
                 ? req.files.images.map(file => file.filename)
                 : listing.images;
 
+            let parsedAmenities = listing.amenities || [];
+
+            if (req.body.amenities) {
+                if (Array.isArray(req.body.amenities)) {
+                    parsedAmenities = req.body.amenities;
+                } else if (typeof req.body.amenities === 'string') {
+                    try {
+                        parsedAmenities = JSON.parse(req.body.amenities);
+                    } catch {
+                        parsedAmenities = req.body.amenities.split(',').map(a => a.trim());
+                    }
+                }
+            }
+
+
             const updateData = {
                 title: req.body.title ?? listing.title,
                 description: req.body.description ?? listing.description,
@@ -247,11 +273,7 @@ const listingController = {
                 state: req.body.state ?? listing.state,
                 country: req.body.country ?? listing.country,
                 address: req.body.address ?? listing.address,
-                amenities: req.body.amenities
-                    ? Array.isArray(req.body.amenities)
-                        ? req.body.amenities
-                        : JSON.parse(req.body.amenities)
-                    : listing.amenities,
+                amenities: parsedAmenities,
                 images: imageUrls,
                 status: req.body.status ?? listing.status,
             };

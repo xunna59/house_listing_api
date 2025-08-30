@@ -83,7 +83,7 @@ const userController = {
             }
 
 
-            const payload = { id: user.id, email: user.email, route: 'user-auth', role: 'User' };
+            const payload = { id: user.id, email: user.email, };
 
             const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
 
@@ -114,7 +114,7 @@ const userController = {
 
             const user = await User.findOne({
                 where: { id: userId },
-                attributes: ['name', 'lastname', 'email',],
+                attributes: ['name', 'email',],
             });
 
             if (!user) {

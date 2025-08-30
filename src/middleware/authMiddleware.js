@@ -20,9 +20,6 @@ const authenticateUser = (req, res, next) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
 
-        if (req.user.role !== 'User') {
-            return res.status(403).json({ success: false, error: 'Access denied.' });
-        }
 
         next();
     } catch (error) {
