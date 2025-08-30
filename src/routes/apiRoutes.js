@@ -7,6 +7,11 @@ const listingController = require('../controllers/listings/listingsController');
 const rateLimit = require('express-rate-limit');
 
 
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: 'Too many login attempts, please try again later.',
+});
 
 
 router.get('/health', (req, res) => {
@@ -28,11 +33,6 @@ router.post('/auth/register',
     userController.createUser
 );
 
-const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    message: 'Too many login attempts, please try again later.',
-});
 
 router.post('/auth/login',
     [
