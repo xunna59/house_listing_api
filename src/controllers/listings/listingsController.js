@@ -144,24 +144,26 @@ const listingController = {
             if (propertyType) where.propertyType = propertyType;
             if (bedrooms) where.bedrooms = parseInt(bedrooms);
             if (bathrooms) where.bathrooms = parseInt(bathrooms);
+
             if (minPrice || maxPrice) {
                 where.price = {};
                 if (minPrice) where.price[Op.gte] = parseInt(minPrice);
                 if (maxPrice) where.price[Op.lte] = parseInt(maxPrice);
             }
 
-            if (q) {
-                where[Op.or] = [
-                    { title: { [Op.iLike]: `%${q}%` } },
-                    { description: { [Op.iLike]: `%${q}%` } }
-                ];
-            }
-
             if (amenities) {
                 const amenityArray = amenities.split(',').map(a => a.trim());
-                where.amenities = {
-                    [Op.contains]: amenityArray
-                };
+                where.amenities = { [Op.contains]: amenityArray };
+            }
+
+            const havingSearch = [];
+            let attributes = { include: [] };
+            if (q) {
+                attributes.include.push([
+                    Sequelize.literal(`ts_rank_cd(search_vector, plainto_tsquery('english', '${q}'))`),
+                    'rank'
+                ]);
+                havingSearch.push(Sequelize.literal(`search_vector @@ plainto_tsquery('english', '${q}')`));
             }
 
             let order = [];
@@ -172,14 +174,18 @@ const listingController = {
                     const fieldName = f.replace('-', '');
                     order.push([fieldName, direction]);
                 });
+            } else if (q) {
+                order.push([Sequelize.literal('rank'), 'DESC']);
             } else {
-                order = [['created_at', 'DESC']];
+                order.push(['created_at', 'DESC']);
             }
 
             const total = await Listing.count({ where });
 
             const listings = await Listing.findAll({
                 where,
+                attributes,
+                having: havingSearch.length ? Sequelize.and(...havingSearch) : undefined,
                 order,
                 offset,
                 limit
@@ -190,7 +196,7 @@ const listingController = {
                 page,
                 limit,
                 total,
-                totalPages: Math.ceil(total / limit)
+                totalPages: Math.ceil(total / limit),
             });
 
         } catch (error) {
